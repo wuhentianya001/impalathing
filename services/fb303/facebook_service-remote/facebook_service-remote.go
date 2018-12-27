@@ -7,7 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/koblas/impalathing/services/fb303"
+	"github.com/wuhentianya001/impalathing/services/fb303"
 	"math"
 	"net"
 	"net/url"

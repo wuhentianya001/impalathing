@@ -7,9 +7,9 @@ import (
 	"bytes"
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/koblas/impalathing/services/beeswax"
-	"github.com/koblas/impalathing/services/cli_service"
-	"github.com/koblas/impalathing/services/status"
+	"github.com/wuhentianya001/impalathing/services/beeswax"
+	"github.com/wuhentianya001/impalathing/services/cli_service"
+	"github.com/wuhentianya001/impalathing/services/status"
 )
 
 // (needed to ensure safety because of naive import list construction.)
