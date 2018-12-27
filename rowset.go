@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	impala "github.com/koblas/impalathing/services/impalaservice"
-	"github.com/koblas/impalathing/services/beeswax"
+	impala "github.com/wuhentianya001/impalathing/services/impalaservice"
+	"github.com/wuhentianya001/impalathing/services/beeswax"
 )
 
 type rowSet struct {
@@ -42,6 +42,8 @@ type RowSet interface {
 	Wait() (*Status, error)
 	FetchAll() []map[string]interface{}
 	MapScan(dest map[string]interface{}) error
+	NewColumns() []string
+	NewScan(dest ...interface{}) error
 }
 
 // Represents job status, including success state and time the
@@ -204,6 +206,8 @@ func (r *rowSet) Scan(dest ...interface{}) error {
 			*dt = int16(i)
 		case *float64:
 			*dt, _ = strconv.ParseFloat(val, 64)
+		case *interface{}:
+			*dt = val
 			/*
 			   case *[]byte:
 			       *dt = []byte(val.(string))
@@ -278,10 +282,93 @@ func (r *rowSet) MapScan(row map[string]interface{}) error {
 	for i, val := range r.nextRow {
 		conv, err := r.convertRawValue(val, r.metadata.Schema.FieldSchemas[i].Type)
 		if err != nil {
-			return err
+			fmt.Println("transform err")
+			//return err
 		}
 		row[r.metadata.Schema.FieldSchemas[i].Name] = conv
 	}
 	return nil
+}
+
+
+//NewColumns get new columns
+func(r *rowSet) NewColumns()[]string{
+	//r.NextForColunmns()
+	err := r.waitForSuccess();
+	if err != nil {
+		return nil
+	}
+	if r.metadata == nil {
+		r.metadata, err = r.client.GetResultsMetadata(r.handle)
+		if err != nil {
+			log.Printf("GetResultsMetadata failed: %v\n", err)
+		}
+	}
+	var columns []string
+	for k, _ := range r.metadata.Schema.FieldSchemas{
+		columns = append(columns,r.metadata.Schema.FieldSchemas[k].Name)
+	}
+	return columns
+}
+
+//NewScan new scan for olap
+func(r *rowSet) NewScan(dest ...interface{})error{
+
+	if r.nextRow == nil {
+		return errors.New("No row to scan! Did you call Next() first?")
+	}
+
+	if len(dest) != len(r.nextRow) {
+		return fmt.Errorf("Can't scan into %d arguments with input of length %d", len(dest), len(r.nextRow))
+	}
+
+	for i, val := range r.nextRow {
+		conv, err := r.newConvertRawValue(val, r.metadata.Schema.FieldSchemas[i].Type)
+		if err != nil {
+			fmt.Println("convert error")
+		}
+		dest[i] = conv
+	}
+	return nil
+}
+
+//newConvertRawValue ...处理不同类型下值为null的情况
+func(r *rowSet) newConvertRawValue(raw string, hiveType string)(interface{},error){
+
+	switch hiveType {
+	case "string":
+		return raw, nil
+	case "int", "tinyint", "smallint":
+		if raw == "NULL" {
+			return nil,nil
+		}
+		i, err := strconv.ParseInt(raw, 10, 0)
+		return int32(i), err
+	case "bigint":
+		if raw == "NULL" {
+			return nil,nil
+		}
+		i, err := strconv.ParseInt(raw, 10, 0)
+		return int64(i), err
+	case "float", "double", "decimal":
+		if raw == "NULL" {
+			return nil,nil
+		}
+		i, err := strconv.ParseFloat(raw, 64)
+		return i, err
+	case "timestamp":
+		if raw == "NULL" {
+			return nil,nil
+		}
+		i, err := time.Parse("2006-01-02 15:04:05", raw)
+		return i, err
+	case "boolean":
+		if raw == "NULL" {
+			return nil,nil
+		}
+		return raw == "true", nil
+	default:
+		return nil, errors.New(fmt.Sprintf("Invalid hive type %v", hiveType))
+	}
 }
 
