@@ -78,3 +78,12 @@ func (c *Connection) Query(query string) (RowSet, error) {
 
 	return newRowSet(c.client, handle, c.options), nil
 }
+
+func(c *Connection)Ping()error{
+	err := c.client.PingImpalaService()
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
